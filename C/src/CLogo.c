@@ -9,10 +9,27 @@
 #include <Arduino.h>
 #endif
 
+LogoData create_logo_data() {
+    LogoData data;
+    logo_init(&data);
+    return data;
+}
+
+void logo_init(LogoData* logoData) {
+    logoData->OriginalName = NULL;
+    logoData->Name = NULL;
+    logoData->BufferSize = 0;
+    logoData->Connected = 0;
+    logoData->Clients = NULL;
+    logoData->NumClients = 0;
+    logoData->OnMessage = NULL;
+    logoData->_logo_client = NULL;
+}
 
 void logo_free(LogoData* logoData) {
     logo_reset(logoData);
-    free(logoData->OriginalName);
+    if(logoData->OriginalName != NULL)
+        free(logoData->OriginalName);
     logoData->OriginalName = NULL;
 }
 
@@ -89,6 +106,12 @@ void logo_send_raw(LogoData* logoData, MessageTypeSend messageType, char** parts
 
     if(append != NULL) {
         size_t appendLength = strlen(append);
+        if(messageType == SND_RESULT) {
+            partsData[partsDataIndex++] = 'O';
+            partsData[partsDataIndex++] = 'K';
+            partsData[partsDataIndex++] = ':';
+            partsData[partsDataIndex++] = ' ';
+        }
         for(size_t i = 0; i < appendLength; i++) {
             partsData[partsDataIndex++] = append[i];
         }
@@ -98,7 +121,7 @@ void logo_send_raw(LogoData* logoData, MessageTypeSend messageType, char** parts
     for(size_t i = 0; i < partsDataIndex; i++)
         data[dataIndex++] = partsData[i];
 
-    LogoWrite(logoData, data, dataIndex);
+    LogoWrite_C(logoData, data, dataIndex);
     
     free(data);
     free(partsData);
@@ -128,7 +151,8 @@ void logo_send_message_single(LogoData* logoData, MessageTypeSend messageType, c
 
 void logo_reset(LogoData* logoData) {
     _logo_free_clients(logoData);
-    free(logoData->Name);
+    if(logoData->Name != NULL)
+        free(logoData->Name);
     logoData->Clients = NULL;
     logoData->Name = NULL;
     logoData->Connected = 0;
@@ -147,10 +171,10 @@ void logo_update_clients(LogoData* logoData) {
 }
 
 void logo_update(LogoData* logoData) {
-    if(!LogoAvailable(logoData))
+    if(!LogoAvailable_C(logoData))
         return;
     char* data = (char*)malloc(logoData->BufferSize * sizeof(char));
-    LogoRead(logoData, data, logoData->BufferSize);
+    LogoRead_C(logoData, data, logoData->BufferSize);
     if(data[0] != LOGO_START)
         return;
     size_t length = 0;
@@ -159,7 +183,7 @@ void logo_update(LogoData* logoData) {
     length--;
     size_t partLenght;
     switch(messageType) {
-        case RCV_JOINED: {
+        case RCV_JOINED: {     //Response to a join command, data contains the given name
             partLenght = _logo_next_part(data + dataIndex);
             length -= partLenght;
             dataIndex += partLenght;
@@ -172,7 +196,7 @@ void logo_update(LogoData* logoData) {
             logo_update_clients(logoData);
             break;   
         }
-        case RCV_CLIENTS: {
+        case RCV_CLIENTS: {     //Response to a client query, data contains the number and names of the connected clients
             _logo_free_clients(logoData);
             partLenght = _logo_read_number(&logoData->NumClients, data + dataIndex);
             length -= partLenght;
@@ -190,12 +214,14 @@ void logo_update(LogoData* logoData) {
             logoData->Connected = 1;
             break;
         }
-        case RCV_MESSAGE:
+        case RCV_MESSAGE:       //Standard message, command or procedure result, data contains the sender and message, call the OnMessage delegate
         case RCV_COMMAND:
         case RCV_RESULT: {
             size_t senderLength;
             partLenght = _logo_next_part(data + dataIndex);
             length -= partLenght;
+
+            //Read the sender name
             dataIndex += partLenght;
             partLenght = _logo_read_number(&senderLength, data + dataIndex);
             length -= partLenght;
@@ -206,7 +232,9 @@ void logo_update(LogoData* logoData) {
                 length--;
             }
             sender[senderLength] = 0;
-            if(messageType == RCV_RESULT) {     //"OK: "
+
+            //Procedure results tart with "OK: ", discard it
+            if(messageType == RCV_RESULT) {
                 dataIndex += 4;
                 length -= 4;
             }
@@ -229,4 +257,32 @@ void logo_update(LogoData* logoData) {
         }
     }
     free(data);
+}
+
+size_t logo_to_string_C(const char* str, char* destination, size_t length) {
+    size_t destIndex = 0;
+    destination[destIndex++] = '"';
+    for(size_t i = 0; i < length; i++) {
+        const char c = str[i];
+        switch(c) {
+            case '\\':
+            case ' ':
+            case '[':
+            case ']':
+            case '(':
+            case ')':
+            case '"':
+            case '+':
+            case '-':
+            case '/':
+            case '*':
+                destination[destIndex++] = '\\';
+                destination[destIndex++] = c;
+                break;
+            default:
+                destination[destIndex++] = c;
+                break;
+        }
+    }
+    return destIndex;
 }

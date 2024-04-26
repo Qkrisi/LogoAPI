@@ -41,6 +41,7 @@ def to_string(message: str) -> str:
 class MessageTypeSend:
 	MESSAGE = 0x57
 	COMMAND = 0x52
+	RESULT = 0x4C
 
 class Command:
 	JOIN = 0x61
@@ -57,15 +58,15 @@ class CommandResponse:
 
 class LogoClient:
 	def __init__(self,
-		name: str,
-		host: str,
-		port: int = 51,
-		*,
-		on_message: typing.Callable[[LogoClient, str, int, str], None] = lambda client, sender, message_type, message: None,
-		on_error: typing.Callable[[Exception], None] = lambda error: None,
-		buffer_size: int = 1024,
-		refresh_rate: int = 60
-	):
+				 name: str,
+				 host: str,
+				 port: int = 51,
+				 *,
+				 on_message: typing.Callable[[LogoClient, str, int, str], None] = lambda client, sender, message_type, message: None,
+				 on_error: typing.Callable[[Exception], None] = lambda error: None,
+				 buffer_size: int = 1024,
+				 refresh_rate: int = 60
+				 ):
 		self.__host: str = host
 		self.__port: int = port
 		self.__origname: str = name
@@ -87,10 +88,10 @@ class LogoClient:
 	def __enter__(self):
 		self.connect()
 		return self
-	
+
 	def __exit__(self, *args):
 		self.close()
-	
+
 	def _raise_if_disconnected(func):
 		def raise_if_disconnected_inner(*args, **kwargs):
 			if not args[0].__connected:
@@ -102,40 +103,40 @@ class LogoClient:
 	@_raise_if_disconnected
 	def name(self) -> str:
 		return self.__name[:]
-	
+
 	@property
 	@_raise_if_disconnected
 	def peers(self) -> tuple[str]:
 		return tuple(self.__clients)
-	
+
 	@property
 	@_raise_if_disconnected
 	def clients(self) -> tuple[str]:
 		if len(self.__clients) < 2:
 			return tuple()
 		return tuple(self.__clients[1:])
-	
+
 	@property
 	@_raise_if_disconnected
 	def server(self) -> typing.Union[str, None]:
 		if len(self.clients) == 0:
 			return None
 		return self.__clients[0]
-	
+
 	@property
 	def connected(self) -> bool:
 		return self.__connected
-	
+
 	@property
 	def closed(self) -> bool:
 		return not self.__open
-	
+
 	def _handle_exception(self, e: Exception) -> None:
 		if not self.__connected:
 			return
 		self.on_error(e)
 		self.disconnect()
-	
+
 	@_raise_if_disconnected
 	def send_raw(self, message_type: int, *parts: str, append: str = "", wait: int = 0) -> typing.Union[tuple[tuple[str, str]], None]:
 		if not self.__connected:
@@ -165,8 +166,8 @@ class LogoClient:
 			self.__waiting -= wait
 			return tuple(resp)
 		return None
-		
-	
+
+
 	def _receive(self) -> None:
 		self.__t1 = True
 		while self.__connected:
@@ -179,12 +180,12 @@ class LogoClient:
 				self._handle_exception(e)
 				break
 		self.__t1 = False
-	
+
 	def _process_message(self, message) -> None:
 		message = list(message)
 		_next_part(message)
 		t = message.pop(0)
-		
+
 		if t == CommandResponse.JOINED:
 			_next_part(message)
 			name = ""
@@ -193,7 +194,7 @@ class LogoClient:
 			self.__name = name
 			threading.Thread(target=self._keep_updating_clients).start()
 			return
-			
+
 		if t == CommandResponse.CLIENTS:
 			clients = []
 			for i in range(_read_number(message)):
@@ -204,7 +205,7 @@ class LogoClient:
 			self.__clients = clients
 			self.__wait_for_clients = False
 			return
-			
+
 		if t == MessageTypeReceive.MESSAGE or t == MessageTypeReceive.COMMAND or t == MessageTypeReceive.RESULT:
 			_next_part(message)
 			sender = ""
@@ -218,9 +219,9 @@ class LogoClient:
 			else:
 				self.on_message(self, sender, t, msg)
 			return
-			
+
 		print(f"Unknown message type: {t}")
-	
+
 	def _keep_updating_clients(self) -> None:
 		if self.__refresh_rate < 1 or self.__refresh_rate == None:
 			return
@@ -232,14 +233,14 @@ class LogoClient:
 				if not self.__connected:
 					break
 		self.__t2 = False
-	
+
 	def _reset(self) -> None:
 		self.__clients = []
 		self.__name = None
 		self.__waiting = 0
 		self.__responses = []
 		self.__wait_for_clients = False
-			
+
 	def connect(self) -> None:
 		if self.__connected:
 			return
@@ -252,19 +253,19 @@ class LogoClient:
 		self.send_raw(Command.JOIN, append = self.__origname)
 		while self.__name == None or len(self.__clients) == 0:
 			pass
-	
+
 	def disconnect(self) -> None:
 		if not self.__connected:
 			return
 		self.__connected = False
 		self.__socket.shutdown(socket.SHUT_RDWR)
 		self._reset()
-	
+
 	def close(self) -> None:
 		self.disconnect()
 		self.__socket.close()
 		self.__open = False
-	
+
 	@_raise_if_disconnected
 	def update_clients(self, wait: bool = False) -> None:
 		while self.__wait_for_clients:
@@ -274,7 +275,9 @@ class LogoClient:
 		if wait:
 			while self.__wait_for_clients:
 				pass
-	
+
 	@_raise_if_disconnected
 	def send_message(self, message_type: int, message: str, *clients: str, wait: bool = False) -> typing.Union[tuple[tuple[str, str]], None]:
+		if message_type == MessageTypeSend.RESULT and not message.startswith("OK: "):
+			message = "OK: " + message
 		return self.send_raw(message_type, *([self.name] + list(clients)), append = message, wait = len(clients) if wait else 0)

@@ -11,18 +11,19 @@
 extern "C"
 {
     #include "CLogo.h"
-    int LogoAvailable(LogoData* logoData) {
-        return LogoAvailable((LogoClient*)logoData->_logo_client);
+    int LogoAvailable_C(LogoData* logoData) {
+        return LogoAvailable_CXX((LogoClient*)logoData->_logo_client);
     }
-    size_t LogoRead(LogoData* logoData, char* buffer, size_t length) {
-        return LogoRead((LogoClient*)logoData->_logo_client, buffer, length);
+    size_t LogoRead_C(LogoData* logoData, char* buffer, size_t length) {
+        return LogoRead_CXX((LogoClient*)logoData->_logo_client, buffer, length);
     }
-    void LogoWrite(LogoData* logoData, uchar* msg, size_t length) {
-        LogoWrite((LogoClient*)logoData->_logo_client, msg, length);
+    void LogoWrite_C(LogoData* logoData, uchar* msg, size_t length) {
+        LogoWrite_CXX((LogoClient*)logoData->_logo_client, msg, length);
     }
 }
 
 LogoClient::LogoClient(char *name, size_t bufferSize) {
+    this->Data = create_logo_data();
     this->Data.OriginalName = name;
     this->Data.BufferSize = bufferSize;
     this->Data._logo_client = (void*)this;
@@ -126,6 +127,11 @@ size_t LogoClient::GetNumClients() {
     return this->Data.NumClients;
 }
 
+String logo_to_string_CXX(const String &str) {
+    char buffer[str.length() * 2 + 1];
+    size_t n = logo_to_string_C(str.c_str(), buffer, str.length());
+    return String(buffer, n);
+}
 
 char* _copy_str(const String& str) {
     char* buffer = (char*)malloc((str.length() + 1) * sizeof(char*));

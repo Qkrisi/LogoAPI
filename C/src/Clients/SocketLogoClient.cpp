@@ -8,17 +8,17 @@
 
 #include "SocketLogoClient.hpp"
 
-int LogoAvailable(LogoClient* logoClient)
+int LogoAvailable_CXX(LogoClient* logoClient)
 {
     return ((SocketLogoClient*)logoClient)->_available();
 }
 
-size_t LogoRead(LogoClient* logoClient, char* buffer, size_t length)
+size_t LogoRead_CXX(LogoClient* logoClient, char* buffer, size_t length)
 {
     return ((SocketLogoClient*)logoClient)->_read(buffer, length);
 }
 
-void LogoWrite(LogoClient* logoClient, uchar* msg, size_t length)
+void LogoWrite_CXX(LogoClient* logoClient, uchar* msg, size_t length)
 {
     return ((SocketLogoClient*)logoClient)->_write(msg, length);
 }
@@ -47,6 +47,12 @@ int SocketLogoClient::Connect(const String& host, uint16_t port) {
 }
 
 void SocketLogoClient::Stop() {
+    shutdown(this->SockFD, SHUT_RDWR);
+    if(this->_available())
+    {
+        char _buffer[this->BytesAvailable];
+        recv(this->SockFD, _buffer, this->BytesAvailable, 0);
+    }
     close(this->SockFD);
     this->Reset();
 }
