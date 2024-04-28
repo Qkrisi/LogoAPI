@@ -10,8 +10,6 @@
 #define LOGO_START 0x07
 #define LOGO_SEPARATOR 0x21
 
-typedef unsigned char uchar;
-
 /// Enumeration of bytes to send to indicate the message type
 typedef enum MessageTypeSend {
     /// Standard message
@@ -48,7 +46,7 @@ typedef struct LogoData {
     int Connected;
     char** Clients;
     size_t NumClients;
-    void (*OnMessage)(struct LogoData*, char*, MessageTypeReceive, char*);
+    void (*OnMessage)(struct LogoData*, const char*, MessageTypeReceive, const char*);
     void* _logo_client;     //C++ proxy - instance of LogoClient
 } LogoData;
 
@@ -68,11 +66,12 @@ size_t LogoRead_C(LogoData* logoData, char* buffer, size_t length);
 /// @param logoData Pointer to the LogoData instance
 /// @param msg The data to send
 /// @param length The length of the msg buffer
-void LogoWrite_C(LogoData* logoData, uchar* msg, size_t length);
+void LogoWrite_C(LogoData* logoData, const char* msg, size_t length);
 
 /// Create and initialize an instance of LogoData
+/// @param name Requested name of the client (null-terminated)
 /// @return The created LogoData
-LogoData create_logo_data();
+LogoData create_logo_data(char* name);
 
 /// Initialize an instance of LogoData to its default values
 /// @param logoData Pointer to the LogoData instance
@@ -90,7 +89,7 @@ void _logo_free_clients(LogoData* logoData);
 /// @param n The number to encode
 /// @param buffer The buffer to copy the bytes into
 /// @return The number of bytes written
-size_t _logo_encode_number(size_t n, uchar* buffer);
+size_t _logo_encode_number(size_t n, char* buffer);
 
 /// Discard bytes until a separator
 /// @param data The pointer to read the bytes from
@@ -113,7 +112,7 @@ void logo_reset(LogoData* logoData);
 /// @param parts The parts to encode (<length>!<part>)
 /// @param partsLength The number of parts to encode
 /// @param append Null-terminated string to append to the end of the message
-void logo_send_raw(LogoData* logoData, MessageTypeSend messageType, char** parts, size_t partsLength, char* append);
+void logo_send_raw(LogoData* logoData, MessageTypeSend messageType, const char** parts, size_t partsLength, const char* append);
 
 /// Send a message to specific clients
 /// @param logoData Pointer to the LogoData instance
@@ -121,14 +120,14 @@ void logo_send_raw(LogoData* logoData, MessageTypeSend messageType, char** parts
 /// @param message Null-terminated string containing the message
 /// @param clients Null-terminated strings representing the names of the clients to send the message to
 /// @param numClients The length of the clients buffer (number of clients)
-void logo_send_message(LogoData* logoData, MessageTypeSend messageType, char* message, char** clients, size_t numClients);
+void logo_send_message(LogoData* logoData, MessageTypeSend messageType, const char* message, const char** clients, size_t numClients);
 
 /// Send a message to a single client
 /// @param logoData Pointer to the LogoData instance
 /// @param messageType The type of message to be sent
 /// @param message Null-terminated string containing the message
 /// @param client Null-terminated string containing the name of the receiver client
-void logo_send_message_single(LogoData* logoData, MessageTypeSend messageType, char* message, char* client);
+void logo_send_message_single(LogoData* logoData, MessageTypeSend messageType, const char* message, const char* client);
 
 /// Send a join command to the server
 /// @param logoData Pointer to the LogoData instance
@@ -141,6 +140,11 @@ void logo_update_clients(LogoData* logoData);
 /// Read incoming messages from the server
 /// @param logoData Pointer to the LogoData instance
 void logo_update(LogoData* logoData);
+
+/// Get the name of the server
+/// @param logoData Pointer to the LogoData instance
+/// @return The name of the server (null-terminated)
+const char* logo_server(LogoData* logoData);
 
 /// Escapes a string to be able to be used as an argument in Imagine
 /// @param str The string to escape

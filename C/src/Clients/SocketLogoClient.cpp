@@ -18,7 +18,7 @@ size_t LogoRead_CXX(LogoClient* logoClient, char* buffer, size_t length)
     return ((SocketLogoClient*)logoClient)->_read(buffer, length);
 }
 
-void LogoWrite_CXX(LogoClient* logoClient, uchar* msg, size_t length)
+void LogoWrite_CXX(LogoClient* logoClient, const char* msg, size_t length)
 {
     return ((SocketLogoClient*)logoClient)->_write(msg, length);
 }
@@ -66,6 +66,6 @@ size_t SocketLogoClient::_read(char* buffer, size_t length) {
     return read(this->SockFD, buffer, std::min(length, (size_t)this->BytesAvailable));
 }
 
-void SocketLogoClient::_write(uchar* msg, size_t length) {
+void SocketLogoClient::_write(const char* msg, size_t length) {
     write(this->SockFD, msg, length);
 }

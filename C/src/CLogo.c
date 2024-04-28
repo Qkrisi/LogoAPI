@@ -9,16 +9,16 @@
 #include <Arduino.h>
 #endif
 
-LogoData create_logo_data() {
+LogoData create_logo_data(char* name) {
     LogoData data;
     logo_init(&data);
+    data.OriginalName = name;
     return data;
 }
 
 void logo_init(LogoData* logoData) {
-    logoData->OriginalName = NULL;
     logoData->Name = NULL;
-    logoData->BufferSize = 0;
+    logoData->BufferSize = 1024;
     logoData->Connected = 0;
     logoData->Clients = NULL;
     logoData->NumClients = 0;
@@ -42,7 +42,7 @@ void _logo_free_clients(LogoData* logoData) {
     free(logoData->Clients);
 }
 
-size_t _logo_encode_number(size_t n, uchar* buffer) {
+size_t _logo_encode_number(size_t n, char* buffer) {
     if(n == 0) {
         buffer[0] = 48;
         return 1;
@@ -73,7 +73,7 @@ size_t _logo_read_number(size_t* n, char* data) {
 }
 
 size_t _logo_next_part(char* data) {
-    uchar c = 0;
+    char c = 0;
     size_t i = 0;
     while(c != LOGO_SEPARATOR) {
         c = data[i++];
@@ -81,9 +81,9 @@ size_t _logo_next_part(char* data) {
     return i;
 }
 
-void logo_send_raw(LogoData* logoData, MessageTypeSend messageType, char** parts, size_t partsLength, char* append) {
-    uchar* data = (uchar*)malloc((logoData->BufferSize + 8) * sizeof(uchar));
-    uchar* partsData = (uchar*)malloc(logoData->BufferSize * sizeof(uchar));
+void logo_send_raw(LogoData* logoData, MessageTypeSend messageType, const char** parts, size_t partsLength, const char* append) {
+    char* data = (char*)malloc((logoData->BufferSize + 8) * sizeof(char));
+    char* partsData = (char*)malloc(logoData->BufferSize * sizeof(char));
 
     data[0] = LOGO_START;
     size_t dataIndex = 1;
@@ -127,25 +127,25 @@ void logo_send_raw(LogoData* logoData, MessageTypeSend messageType, char** parts
     free(partsData);
 }
 
-void logo_send_message(LogoData* logoData, MessageTypeSend messageType, char* message, char** clients, size_t numClients) {
+void logo_send_message(LogoData* logoData, MessageTypeSend messageType, const char* message, const char** clients, size_t numClients) {
     char** _clients = (char**)malloc(++numClients * sizeof(char*));
     
     for(size_t i = 0; i < numClients; i++) {
-        char* client = i == 0 ? logoData->Name : clients[i-1];
+        const char* client = i == 0 ? logoData->Name : clients[i-1];
         size_t clientSize = strlen(client);
         _clients[i] = (char*)malloc((clientSize + 1) * sizeof(char));
         strcpy(_clients[i], client);
         _clients[i][clientSize] = 0;
     }
 
-    logo_send_raw(logoData, messageType, _clients, numClients, message);
+    logo_send_raw(logoData, messageType, (const char**)_clients, numClients, message);
 
     for(size_t i = 0; i < numClients; i++)
         free(_clients[i]);
     free(_clients);
 }
 
-void logo_send_message_single(LogoData* logoData, MessageTypeSend messageType, char* message, char* client) {
+void logo_send_message_single(LogoData* logoData, MessageTypeSend messageType, const char* message, const char* client) {
     logo_send_message(logoData, messageType, message, &client, 1);
 }
 
@@ -257,6 +257,12 @@ void logo_update(LogoData* logoData) {
         }
     }
     free(data);
+}
+
+const char* logo_server(LogoData* logoData) {
+    if(logoData->NumClients == 0)
+        return NULL;
+    return logoData->Clients[0];
 }
 
 size_t logo_to_string_C(const char* str, char* destination, size_t length) {

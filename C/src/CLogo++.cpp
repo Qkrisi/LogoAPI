@@ -17,14 +17,13 @@ extern "C"
     size_t LogoRead_C(LogoData* logoData, char* buffer, size_t length) {
         return LogoRead_CXX((LogoClient*)logoData->_logo_client, buffer, length);
     }
-    void LogoWrite_C(LogoData* logoData, uchar* msg, size_t length) {
+    void LogoWrite_C(LogoData* logoData, const char* msg, size_t length) {
         LogoWrite_CXX((LogoClient*)logoData->_logo_client, msg, length);
     }
 }
 
 LogoClient::LogoClient(char *name, size_t bufferSize) {
-    this->Data = create_logo_data();
-    this->Data.OriginalName = name;
+    this->Data = create_logo_data(name);
     this->Data.BufferSize = bufferSize;
     this->Data._logo_client = (void*)this;
     this->Data.OnMessage = _message_proxy;
@@ -33,7 +32,7 @@ LogoClient::LogoClient(char *name, size_t bufferSize) {
 LogoClient::LogoClient(String name, size_t bufferSize) : LogoClient(_copy_str(name), bufferSize) {
 }
 
-LogoClient::LogoClient(char *name, void (*onMessage)(LogoClient*, char*, MessageTypeReceive, char*), size_t bufferSize) : LogoClient(name, bufferSize) {
+LogoClient::LogoClient(char *name, void (*onMessage)(LogoClient*, const char*, MessageTypeReceive, const char*), size_t bufferSize) : LogoClient(name, bufferSize) {
     this->OnMessage.OnMessageChar = onMessage;
     this->OnMessageMode = MSGMODE_CHAR;
 }
@@ -51,7 +50,7 @@ void LogoClient::Reset() {
     logo_reset(&this->Data);
 }
 
-void LogoClient::SendRaw(MessageTypeSend messageType, char** parts, size_t partsLength, char* append) {
+void LogoClient::SendRaw(MessageTypeSend messageType, const char** parts, size_t partsLength, const char* append) {
     logo_send_raw(&this->Data, messageType, parts, partsLength, append);
 }
 
@@ -61,18 +60,18 @@ void LogoClient::SendRaw(MessageTypeSend messageType, String* parts, size_t part
         partsBuffer[i] = _copy_str(parts[i]);
     }
     char* appendBuffer = _copy_str(append);
-    this->SendRaw(messageType, partsBuffer, partsLength, appendBuffer);
+    this->SendRaw(messageType, const_cast<const char**>(partsBuffer), partsLength, appendBuffer);
     for(size_t i = 0;i < partsLength; i++)
         free(partsBuffer[i]);
     free(partsBuffer);
     free(appendBuffer);
 }
 
-void LogoClient::SendMessage(MessageTypeSend messageType, char* message, char** clients, size_t numClients) {
+void LogoClient::SendMessage(MessageTypeSend messageType, const char* message, const char** clients, size_t numClients) {
     logo_send_message(&this->Data, messageType, message, clients, numClients);
 }
 
-void LogoClient::SendMessage(MessageTypeSend messageType, char *message, char *client) {
+void LogoClient::SendMessage(MessageTypeSend messageType, const char* message, const char *client) {
     this->SendMessage(messageType, message, &client, 1);
 }
 
@@ -82,7 +81,7 @@ void LogoClient::SendMessage(MessageTypeSend messageType, const String& message,
         clientsBuffer[i] = _copy_str(clients[i]);
     }
     char* messageBuffer = _copy_str(message);
-    this->SendMessage(messageType, messageBuffer, clientsBuffer, numClients);
+    this->SendMessage(messageType, messageBuffer, const_cast<const char**>(clientsBuffer), numClients);
     for(size_t i = 0;i < numClients; i++)
         free(clientsBuffer[i]);
     free(clientsBuffer);
@@ -139,7 +138,7 @@ char* _copy_str(const String& str) {
     return buffer;
 }
 
-void _message_proxy(LogoData* logoData, char* sender, MessageTypeReceive messageType, char* message) {
+void _message_proxy(LogoData* logoData, const char* sender, MessageTypeReceive messageType, const char* message) {
     if(logoData->_logo_client == NULL)
         return;
     auto client = (LogoClient*)logoData->_logo_client;

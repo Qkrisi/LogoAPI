@@ -1,6 +1,6 @@
 #include <iostream>
+#include <time.h>
 
-#include "src/CLogo++.hpp"
 #include "src/Clients/SocketLogoClient.hpp"
 
 void OnMessage(LogoClient* client, const String& sender, MessageTypeReceive messageType, const String& message) {
@@ -9,12 +9,21 @@ void OnMessage(LogoClient* client, const String& sender, MessageTypeReceive mess
 }
 
 int main() {
-    SocketLogoClient client("CLogoTest", OnMessage);
-    if(client.Connect("127.0.0.1", 51)) {
-        std::cout << "Connected as " << client.GetName() << std::endl;
-        for(;;)
-            client.Update();
+    SocketLogoClient logoClient("CLogoTest", OnMessage);
+    if(!logoClient.Connect("127.0.0.1", 51)) {
+        std::cout << "Sikertelen csatlakozás" << std::endl;
+        return 0;
     }
+
+    logoClient.SendMessage(SND_COMMAND, "lap1't1'e 50", logoClient.GetServerName());
+    clock_t start = clock();
+    int elapsed = 0;
+    while(elapsed < 10)
+    {
+        logoClient.Update();
+        elapsed = (clock() - start) / CLOCKS_PER_SEC;
+    }
+    logoClient.Stop();
 
     return 0;
 }

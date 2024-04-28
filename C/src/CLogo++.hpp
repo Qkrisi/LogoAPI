@@ -31,22 +31,22 @@ class LogoClient {
         /// Stores the function pointer to the OnMessage event
         union {
             /// Event for MSGMODE_CHAR
-            void (*OnMessageChar)(LogoClient*, char*, MessageTypeReceive, char*);
+            void (*OnMessageChar)(LogoClient*, const char*, MessageTypeReceive, const char*);
 
             /// Event for MSGMODE_STR
             void (*OnMessageStr)(LogoClient*, const String&, MessageTypeReceive, const String&);
         } OnMessage;
 
 
-        explicit LogoClient(char* name, size_t bufferSize = 2048);
-        explicit LogoClient(String name, size_t bufferSize = 2048);
-        LogoClient(char* name, void (*onMessage)(LogoClient*, char*, MessageTypeReceive, char*), size_t bufferSize = 2048);
-        LogoClient(String name, void (*onMessage)(LogoClient*, const String&, MessageTypeReceive, const String&), size_t bufferSize = 2048);
+        explicit LogoClient(char* name, size_t bufferSize = 1024);
+        explicit LogoClient(String name, size_t bufferSize = 1024);
+        LogoClient(char* name, void (*onMessage)(LogoClient*, const char*, MessageTypeReceive, const char*), size_t bufferSize = 1024);
+        LogoClient(String name, void (*onMessage)(LogoClient*, const String&, MessageTypeReceive, const String&), size_t bufferSize = 1024);
         virtual ~LogoClient();
-        void SendRaw(MessageTypeSend messageType, char** parts, size_t partsLength, char* append);
+        void SendRaw(MessageTypeSend messageType, const char** parts, size_t partsLength, const char* append);
         void SendRaw(MessageTypeSend messageType, String* parts, size_t partsLength, const String& append);
-        void SendMessage(MessageTypeSend messageType, char* message, char** clients, size_t numClients);
-        void SendMessage(MessageTypeSend messageType, char* message, char* client);
+        void SendMessage(MessageTypeSend messageType, const char* message, const char** clients, size_t numClients);
+        void SendMessage(MessageTypeSend messageType, const char* message, const char* client);
         void SendMessage(MessageTypeSend messageType, const String& message, String* clients, size_t numClients);
         void SendMessage(MessageTypeSend messageType, const String& message, String client);
         void Join();
@@ -62,10 +62,10 @@ class LogoClient {
 
 int LogoAvailable_CXX(LogoClient* logoClient);
 size_t LogoRead_CXX(LogoClient* logoClient, char* buffer, size_t length);
-void LogoWrite_CXX(LogoClient* logoClient, uchar* msg, size_t length);
+void LogoWrite_CXX(LogoClient* logoClient, const char* msg, size_t length);
 
 char* _copy_str(const String& str);
-void _message_proxy(LogoData* logoData, char* sender, MessageTypeReceive messageType, char* message);
+void _message_proxy(LogoData* logoData, const char* sender, MessageTypeReceive messageType, const char* message);
 
 String logo_to_string_CXX(const String& str);
 
