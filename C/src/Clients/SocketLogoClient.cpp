@@ -1,10 +1,15 @@
+#ifdef WINSOCK
+#include <winsock2.h>
+#pragma comment(lib, "Ws2_32.lib")
+#else
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <strings.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <iostream>
+#include <cstring>
+#endif
 
 #include "SocketLogoClient.hpp"
 
@@ -29,15 +34,38 @@ SocketLogoClient::~SocketLogoClient() {
 
 int SocketLogoClient::Connect(const char* host, uint16_t port) {
     struct sockaddr_in address;
-    this->SockFD = socket(AF_INET, SOCK_STREAM, 0);
-    if(this->SockFD == -1)
+#ifdef WINSOCK
+    WSADATA wsa;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
         return 0;
-    bzero(&address, sizeof(address));
+#endif
+    this->SockFD = socket(
+        AF_INET,
+        SOCK_STREAM,
+#ifdef WINSOCK
+        IPPROTO_TCP
+#else
+        0
+#endif
+    );
+    if (this->SockFD == -1)
+    {
+#ifdef WINSOCK
+        WSACleanup();
+#endif
+        return 0;
+    }
+    memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = inet_addr(host);
     address.sin_port = htons(port);
-    if(connect(this->SockFD, (struct sockaddr*)&address, sizeof(address)) != 0)
+    if (connect(this->SockFD, (struct sockaddr*)&address, sizeof(address)) != 0)
+    {
+#ifdef WINSOCK
+        WSACleanup();
+#endif
         return 0;
+    }
     this->Join();
     return 1;
 }
@@ -47,25 +75,50 @@ int SocketLogoClient::Connect(const String& host, uint16_t port) {
 }
 
 void SocketLogoClient::Stop() {
-    shutdown(this->SockFD, SHUT_RDWR);
+    shutdown(
+        this->SockFD,
+#ifdef WINSOCK
+        SD_BOTH
+#else
+        SHUT_RDWR
+#endif
+    );
     if(this->_available())
     {
-        char _buffer[this->BytesAvailable];
+        char* _buffer = (char*)malloc(this->BytesAvailable * sizeof(char));
         recv(this->SockFD, _buffer, this->BytesAvailable, 0);
+        free(_buffer);
     }
+#ifdef WINSOCK
+    closesocket(this->SockFD);
+    WSACleanup();
+#else
     close(this->SockFD);
+#endif
     this->Reset();
 }
 
 int SocketLogoClient::_available() {
+#ifdef WINSOCK
+    ioctlsocket(this->SockFD, FIONREAD, &this->BytesAvailable);
+#else
     ioctl(this->SockFD, FIONREAD, &this->BytesAvailable);
+#endif
     return this->BytesAvailable > 0;
 }
 
 size_t SocketLogoClient::_read(char* buffer, size_t length) {
+#ifdef WINSOCK
+    return recv(this->SockFD, buffer, min(length, this->BytesAvailable), 0);
+#else
     return read(this->SockFD, buffer, std::min(length, (size_t)this->BytesAvailable));
+#endif
 }
 
 void SocketLogoClient::_write(const char* msg, size_t length) {
+#ifdef WINSOCK
+    send(this->SockFD, msg, length, 0);
+#else
     write(this->SockFD, msg, length);
+#endif
 }

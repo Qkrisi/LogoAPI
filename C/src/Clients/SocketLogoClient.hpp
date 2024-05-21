@@ -6,7 +6,7 @@
 class SocketLogoClient : public LogoClient {
     private:
         int SockFD;
-        int BytesAvailable;
+        unsigned long BytesAvailable;
     public:
         using LogoClient::LogoClient;
         ~SocketLogoClient();

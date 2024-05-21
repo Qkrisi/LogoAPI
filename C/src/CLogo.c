@@ -233,7 +233,7 @@ void logo_update(LogoData* logoData) {
             }
             sender[senderLength] = 0;
 
-            //Procedure results tart with "OK: ", discard it
+            //Procedure results start with "OK: ", discard it
             if(messageType == RCV_RESULT) {
                 dataIndex += 4;
                 length -= 4;

@@ -126,10 +126,12 @@ size_t LogoClient::GetNumClients() {
     return this->Data.NumClients;
 }
 
-String logo_to_string_CXX(const String &str) {
-    char buffer[str.length() * 2 + 1];
+String logo_to_string_CXX(const String& str) {
+    char* buffer = (char*)malloc((str.length() * 2 + 1) * sizeof(char));
     size_t n = logo_to_string_C(str.c_str(), buffer, str.length());
-    return String(buffer, n);
+    String _str(buffer, n);
+    free(buffer);
+    return _str;
 }
 
 char* _copy_str(const String& str) {

@@ -10,6 +10,10 @@
 #define LOGO_START 0x07
 #define LOGO_SEPARATOR 0x21
 
+#ifdef WINSOCK
+typedef unsigned int uint;
+#endif
+
 /// Enumeration of bytes to send to indicate the message type
 typedef enum MessageTypeSend {
     /// Standard message
