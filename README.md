@@ -1,5 +1,7 @@
 # LogoApi
 
+The English version of this description can be found [here](https://github.com/Qkrisi/LogoAPI/blob/master/README_English.md).
+
 Ez a könyvtár lehetővé teszi a kommunikációt Imagine Logo és külső folyamatok/eszközök között.
 
 Mintaprojektek [itt](https://github.com/qkrisi/LogoApiExamples) találhatóak.
