@@ -3,6 +3,7 @@ project(CLogo)
 
 set(CMAKE_CXX_STANDARD 17)
 
+add_compile_definitions(CLIENTSFOLDER)
 IF(WIN32)
     add_compile_definitions(WINSOCK)
 ENDIF()

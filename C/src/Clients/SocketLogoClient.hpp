@@ -1,7 +1,11 @@
 #ifndef SOCKETLOGOCLIENT_HPP
 #define SOCKETLOGOCLIENT_HPP
 
+#ifdef CLIENTSFOLDER
 #include "../CLogo++.hpp"
+#else
+#include "CLogo++.hpp"
+#endif
 
 class SocketLogoClient : public LogoClient {
     private:
